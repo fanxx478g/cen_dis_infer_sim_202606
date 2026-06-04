@@ -15,13 +15,13 @@ if hasattr(sys.stdout, "reconfigure"):
 matplotlib.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "Arial"]
 matplotlib.rcParams["axes.unicode_minus"] = False
 
-NUM_INSTANCES = 100
-USER_RANGE = range(100 * 100, 100 * 260 + 1, 500)
-REGIONS = [1, 10]
+NUM_INSTANCES = 4
+USER_RANGE = range(4 * 60 * 5, 4 * 260 * 5 + 1, 20 * 10)
+REGIONS = [1, 4]
 SEED = 42
 PREFILL_ZERO_PROBS_BY_REGION_COUNT = {
-    1: [0.0],
-    10: [0.0] * 10,
+    1: [0.8],
+    10: [0.6] * 10,
 }
 
 ARRIVAL_RATE = 100 * 1000.0
@@ -41,7 +41,6 @@ METRICS = [
     ("max_wait", "最大等待时间(ms)", "float"),
     ("within_target_count", f"服务时长<={int(SERVICE_DURATION_TARGET_MS)}ms请求数", "int"),
     ("within_target_ratio", f"服务时长<={int(SERVICE_DURATION_TARGET_MS)}ms请求占比", "ratio"),
-    ("zero_wait_ratio", "阈值内等待占比", "ratio"),
 ]
 
 
@@ -100,9 +99,8 @@ def compact_ms(ms_value: float) -> str:
 
 
 def build_output_stem() -> str:
-    region_part = "-".join(str(r) for r in REGIONS)
+    region_part = f"{REGIONS[0]}-{REGIONS[-1]}" if len(REGIONS) > 1 else str(REGIONS[0])
     user_part = f"{USER_RANGE.start}-{USER_RANGE.stop - 1}x{USER_RANGE.step}"
-    seed_part = SEED if SEED is not None else "none"
     return (
         f"cmp_i{NUM_INSTANCES}"
         f"_u{user_part}"
@@ -112,7 +110,6 @@ def build_output_stem() -> str:
         f"_qw{int(QUEUE_WAIT_THRESHOLD_MS)}"
         f"_sd{int(SERVICE_DURATION_TARGET_MS)}"
         f"_t{compact_ms(SIM_DURATION)}"
-        f"_s{seed_part}"
     )
 
 
@@ -330,7 +327,7 @@ ax.legend()
 ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig(FIG_PATH, dpi=200)
-print(f"图像已保存至 {FIG_PATH}")
+# plt.savefig(FIG_PATH, dpi=200)
+# print(f"图像已保存至 {FIG_PATH}")
 print_final_summary()
 plt.show()

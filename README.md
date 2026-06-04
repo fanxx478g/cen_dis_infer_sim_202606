@@ -200,13 +200,11 @@ PREFILL_ZERO_PROBS_BY_REGION_COUNT = {
 - 最大等待时间(ms)
 - 服务时长 `<= SERVICE_DURATION_TARGET_MS` 的请求数
 - 服务时长 `<= SERVICE_DURATION_TARGET_MS` 的请求占比
-- 阈值内等待占比
 
 其中：
 
 - 服务时长 = 等待时间 + Prefill 计算时间
 - 服务时长达标占比的分母是全部完成请求数
-- 阈值内等待占比表示 `wait_time <= queue_wait_threshold_ms` 的请求占比
 
 ## 图像说明
 

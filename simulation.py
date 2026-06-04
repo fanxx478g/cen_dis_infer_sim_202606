@@ -270,7 +270,6 @@ def compute_stats(
         "avg_wait": statistics.mean(wait_times),
         "p99_wait": percentile(wait_times, 99),
         "max_wait": max(wait_times),
-        "zero_wait_ratio": sum(1 for w in wait_times if w <= queue_wait_threshold_ms) / len(wait_times),
     }
     if service_duration_target_ms is not None:
         within_target_count = sum(1 for d in durations if d <= service_duration_target_ms)
@@ -336,7 +335,6 @@ def print_comparison(sim: LLMDeploymentSimulation):
         ("最大服务时长(ms)", "max_duration", "{:.2f}", True),
         ("平均等待时间(ms)", "avg_wait", "{:.2f}", True),
         ("最大等待时间(ms)", "max_wait", "{:.2f}", True),
-        ("零等待比例", "zero_wait_ratio", "{:.2%}", False),
     ]
 
     for label, key, fmt, show_diff in metrics:
@@ -366,7 +364,6 @@ def print_comparison(sim: LLMDeploymentSimulation):
             ("排队请求比例", "queued_ratio", "{:.2%}"),
             ("平均服务时长(ms)", "avg_duration", "{:.2f}"),
             ("平均等待时间(ms)", "avg_wait", "{:.2f}"),
-            ("零等待比例", "zero_wait_ratio", "{:.2%}"),
         ]:
             print(f"    {label:<20} {fmt.format(cs[key]):>15} {fmt.format(rs[key]):>15}")
 
