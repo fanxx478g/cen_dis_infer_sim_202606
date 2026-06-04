@@ -1,0 +1,11 @@
+.idea/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+*.csv
+*.png
+
+Thumbs.db
+Desktop.ini
