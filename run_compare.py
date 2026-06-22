@@ -15,21 +15,24 @@ if hasattr(sys.stdout, "reconfigure"):
 matplotlib.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "Arial"]
 matplotlib.rcParams["axes.unicode_minus"] = False
 
-NUM_INSTANCES = 4
-USER_RANGE = range(4 * 60 * 5, 4 * 260 * 5 + 1, 20 * 10)
-REGIONS = [1, 4]
+NUM_INSTANCES = 2
+# USER_RANGE = range(20 * 5 * 1, 20 * 70 * 1 + 1, 20)
+USER_RANGE = range(2 * 60 * 1, 2 * 260 * 1 + 1, 2 * 5)
+REGIONS = [1]
 SEED = 42
 PREFILL_ZERO_PROBS_BY_REGION_COUNT = {
-    1: [0.8],
-    10: [0.6] * 10,
+    1: [0.0],
+    2: [0.0] * 2,
 }
 
 ARRIVAL_RATE = 100 * 1000.0
-PREFILL_TIME_MIN = 350.0
-PREFILL_TIME_MAX = 450.0
+PREFILL_TIME_MIN = 350
+PREFILL_TIME_MAX = 450
+# PREFILL_TIME_MIN = 1350
+# PREFILL_TIME_MAX = 1750
 SIM_DURATION = 60 * 60 * 1000.0
 QUEUE_WAIT_THRESHOLD_MS = 50.0
-SERVICE_DURATION_TARGET_MS = 800.0
+SERVICE_DURATION_TARGET_MS = 800
 
 METRICS = [
     ("count", "完成请求数", "int"),
@@ -110,6 +113,7 @@ def build_output_stem() -> str:
         f"_qw{int(QUEUE_WAIT_THRESHOLD_MS)}"
         f"_sd{int(SERVICE_DURATION_TARGET_MS)}"
         f"_t{compact_ms(SIM_DURATION)}"
+        f"_k{PREFILL_ZERO_PROBS_BY_REGION_COUNT[1][0]}"
     )
 
 
