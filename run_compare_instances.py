@@ -17,11 +17,15 @@ matplotlib.rcParams["axes.unicode_minus"] = False
 
 NUM_REGIONS = 1
 CASES = [
-    {"num_instances": 3, "user_range": range(3 * 5, 3 * 70 + 1, 3)},
-    {"num_instances": 6, "user_range": range(6 * 5, 6 * 70 + 1, 6)},
-    {"num_instances": 9, "user_range": range(9 * 5, 9 * 70 + 1, 9)},
-    {"num_instances": 12, "user_range": range(12 * 5, 12 * 70 + 1, 12)},
-    {"num_instances": 15, "user_range": range(15 * 5, 15 * 70 + 1, 15)},
+    # {"num_instances": 3, "user_range": range(3 * 5, 3 * 70 + 1, 3)},
+    # {"num_instances": 6, "user_range": range(6 * 5, 6 * 70 + 1, 6)},
+    # {"num_instances": 9, "user_range": range(9 * 5, 9 * 70 + 1, 9)},
+    # {"num_instances": 12, "user_range": range(12 * 5, 12 * 70 + 1, 12)},
+    # {"num_instances": 15, "user_range": range(15 * 5, 15 * 70 + 1, 15)},
+    # {"num_instances": 30, "user_range": range(30 * 5, 30 * 70 + 1, 30)},
+    {"num_instances": 1, "user_range": range(1 * 5, 1 * 70 + 1, 1)},
+    {"num_instances": 10, "user_range": range(10 * 5, 10 * 70 + 1, 10)},
+    {"num_instances": 26, "user_range": range(26 * 5, 26 * 70 + 1, 26)},
     {"num_instances": 30, "user_range": range(30 * 5, 30 * 70 + 1, 30)},
     # {"num_instances": 12, "user_range": range(12 * 60, 12 * 260 + 1, 12 * 5)},
     # {"num_instances": 18, "user_range": range(18 * 60, 18 * 260 + 1, 18 * 5)},
@@ -224,131 +228,143 @@ def print_final_summary():
         )
 
 
-validate_config()
-OUTPUT_STEM = build_output_stem()
-CSV_PATH = Path(f"{OUTPUT_STEM}.csv")
-FIG_PATH = Path(f"{OUTPUT_STEM}.png")
+CSV_PATH = Path()
+FIG_PATH = Path()
+CASE_STATS = {}
 
-results_data = {case["num_instances"]: [] for case in CASES}
-CASE_STATS = {case["num_instances"]: {} for case in CASES}
-total_steps = sum(len(list(case["user_range"])) for case in CASES)
-current_step = 0
 
-for case in CASES:
-    num_instances = case["num_instances"]
-    user_range = case["user_range"]
-    mode_name = "集中式" if NUM_REGIONS == 1 else f"{NUM_REGIONS}地域分布式"
+def main() -> None:
+    global CSV_PATH, FIG_PATH, CASE_STATS
 
-    print(f"\n{'=' * 60}")
-    print(f"{instance_group_name(num_instances)} | {mode_name} | 每地域实例数: {num_instances // NUM_REGIONS}")
-    print(f"各地域prefill为0概率: {build_prefill_zero_probs(NUM_REGIONS)}")
-    print(f"{'=' * 60}")
-    print(
-        f"{'用户数':>8} {'用户/实例':>10} {'完成请求数':>10} {'有排队请求数':>12} "
-        f"{'排队比例':>10} {'平均服务时长':>14} {'平均等待时间':>14} "
-        f"{'最大服务时长':>14} {'最大等待时间':>14} "
-        f"{f'<={int(SERVICE_DURATION_TARGET_MS)}ms数':>14} {f'<={int(SERVICE_DURATION_TARGET_MS)}ms占比':>16}"
-    )
-    print("-" * 160)
+    validate_config()
+    output_stem = build_output_stem()
+    CSV_PATH = Path(f"{output_stem}.csv")
+    FIG_PATH = Path(f"{output_stem}.png")
 
-    for num_users in user_range:
-        current_step += 1
-        print(f"[{current_step}/{total_steps} ({current_step * 100 // total_steps}%)] ", end="")
-        sim = LLMDeploymentSimulation(
-            num_instances=num_instances,
-            num_users=num_users,
-            num_regions=NUM_REGIONS,
-            arrival_rate=ARRIVAL_RATE,
-            prefill_time_min=PREFILL_TIME_MIN,
-            prefill_time_max=PREFILL_TIME_MAX,
-            sim_duration=SIM_DURATION,
-            seed=SEED,
-            queue_wait_threshold_ms=QUEUE_WAIT_THRESHOLD_MS,
-            prefill_zero_prob_by_region=build_prefill_zero_probs(NUM_REGIONS),
-        )
+    results_data = {case["num_instances"]: [] for case in CASES}
+    CASE_STATS = {case["num_instances"]: {} for case in CASES}
+    total_steps = sum(len(list(case["user_range"])) for case in CASES)
+    current_step = 0
 
-        reqs = sim.run_centralized() if NUM_REGIONS == 1 else sim.run_distributed()
-        stats = compute_stats(reqs, QUEUE_WAIT_THRESHOLD_MS, SERVICE_DURATION_TARGET_MS)
-        users_per_instance = num_users / num_instances
+    for case in CASES:
+        num_instances = case["num_instances"]
+        user_range = case["user_range"]
+        mode_name = "集中式" if NUM_REGIONS == 1 else f"{NUM_REGIONS}地域分布式"
 
+        print(f"\n{'=' * 60}")
+        print(f"{instance_group_name(num_instances)} | {mode_name} | 每地域实例数: {num_instances // NUM_REGIONS}")
+        print(f"各地域prefill为0概率: {build_prefill_zero_probs(NUM_REGIONS)}")
+        print(f"{'=' * 60}")
         print(
-            f"{num_users:>8} {users_per_instance:>10.1f} {stats['count']:>10} {stats['queued_count']:>12} "
-            f"{stats['queued_ratio']:>10.4%} {stats['avg_duration']:>14.4f}ms {stats['avg_wait']:>14.4f}ms "
-            f"{stats['max_duration']:>14.4f}ms {stats['max_wait']:>14.4f}ms "
-            f"{stats['within_target_count']:>14} {stats['within_target_ratio']:>16.4%}"
+            f"{'用户数':>8} {'用户/实例':>10} {'完成请求数':>10} {'有排队请求数':>12} "
+            f"{'排队比例':>10} {'平均服务时长':>14} {'平均等待时间':>14} "
+            f"{'最大服务时长':>14} {'最大等待时间':>14} "
+            f"{f'<={int(SERVICE_DURATION_TARGET_MS)}ms数':>14} {f'<={int(SERVICE_DURATION_TARGET_MS)}ms占比':>16}"
+        )
+        print("-" * 160)
+
+        for num_users in user_range:
+            current_step += 1
+            print(f"[{current_step}/{total_steps} ({current_step * 100 // total_steps}%)] ", end="")
+            sim = LLMDeploymentSimulation(
+                num_instances=num_instances,
+                num_users=num_users,
+                num_regions=NUM_REGIONS,
+                arrival_rate=ARRIVAL_RATE,
+                prefill_time_min=PREFILL_TIME_MIN,
+                prefill_time_max=PREFILL_TIME_MAX,
+                sim_duration=SIM_DURATION,
+                seed=SEED,
+                queue_wait_threshold_ms=QUEUE_WAIT_THRESHOLD_MS,
+                prefill_zero_prob_by_region=build_prefill_zero_probs(NUM_REGIONS),
+            )
+
+            reqs = sim.run_centralized() if NUM_REGIONS == 1 else sim.run_distributed()
+            stats = compute_stats(reqs, QUEUE_WAIT_THRESHOLD_MS, SERVICE_DURATION_TARGET_MS)
+            users_per_instance = num_users / num_instances
+
+            print(
+                f"{num_users:>8} {users_per_instance:>10.1f} {stats['count']:>10} {stats['queued_count']:>12} "
+                f"{stats['queued_ratio']:>10.4%} {stats['avg_duration']:>14.4f}ms {stats['avg_wait']:>14.4f}ms "
+                f"{stats['max_duration']:>14.4f}ms {stats['max_wait']:>14.4f}ms "
+                f"{stats['within_target_count']:>14} {stats['within_target_ratio']:>16.4%}"
+            )
+
+            results_data[num_instances].append(
+                {
+                    "num_users": num_users,
+                    "users_per_instance": users_per_instance,
+                    "queued_ratio": stats["queued_ratio"],
+                }
+            )
+            CASE_STATS[num_instances][num_users] = stats
+
+    fieldnames = ["用户/实例"]
+    for case in CASES:
+        num_instances = case["num_instances"]
+        prefix = instance_group_name(num_instances)
+        fieldnames.append(f"{prefix}-用户数")
+        for _, label, _ in METRICS:
+            fieldnames.append(f"{prefix}-{label}")
+
+    with open(CSV_PATH, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for users_per_instance in users_per_instance_values():
+            row = {"用户/实例": f"{users_per_instance:.1f}"}
+            for case in CASES:
+                num_instances = case["num_instances"]
+                prefix = instance_group_name(num_instances)
+                matched_users = None
+                for num_users in case["user_range"]:
+                    if abs(num_users / num_instances - users_per_instance) < 1e-9:
+                        matched_users = num_users
+                        break
+                if matched_users is None:
+                    row[f"{prefix}-用户数"] = ""
+                    for _, label, _ in METRICS:
+                        row[f"{prefix}-{label}"] = ""
+                    continue
+
+                stats = CASE_STATS[num_instances][matched_users]
+                row[f"{prefix}-用户数"] = matched_users
+                for key, label, kind in METRICS:
+                    row[f"{prefix}-{label}"] = format_metric(stats[key], kind)
+            writer.writerow(row)
+    print(f"\n表格已保存至 {CSV_PATH}")
+
+    markers = ["o", "s", "^", "D", "v", "P", "*", "X", "p", "h"]
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    for i, case in enumerate(CASES):
+        num_instances = case["num_instances"]
+        data = results_data[num_instances]
+        x = [d["users_per_instance"] for d in data]
+        y = [d["queued_ratio"] for d in data]
+        ax.plot(
+            x,
+            y,
+            marker=markers[i % len(markers)],
+            markersize=4,
+            label=f"{instance_group_name(num_instances)}",
         )
 
-        results_data[num_instances].append(
-            {
-                "num_users": num_users,
-                "users_per_instance": users_per_instance,
-                "queued_ratio": stats["queued_ratio"],
-            }
-        )
-        CASE_STATS[num_instances][num_users] = stats
-
-fieldnames = ["用户/实例"]
-for case in CASES:
-    num_instances = case["num_instances"]
-    prefix = instance_group_name(num_instances)
-    fieldnames.append(f"{prefix}-用户数")
-    for _, label, _ in METRICS:
-        fieldnames.append(f"{prefix}-{label}")
-
-with open(CSV_PATH, "w", newline="", encoding="utf-8-sig") as f:
-    writer = csv.DictWriter(f, fieldnames=fieldnames)
-    writer.writeheader()
-    for users_per_instance in users_per_instance_values():
-        row = {"用户/实例": f"{users_per_instance:.1f}"}
-        for case in CASES:
-            num_instances = case["num_instances"]
-            prefix = instance_group_name(num_instances)
-            matched_users = None
-            for num_users in case["user_range"]:
-                if abs(num_users / num_instances - users_per_instance) < 1e-9:
-                    matched_users = num_users
-                    break
-            if matched_users is None:
-                row[f"{prefix}-用户数"] = ""
-                for _, label, _ in METRICS:
-                    row[f"{prefix}-{label}"] = ""
-                continue
-
-            stats = CASE_STATS[num_instances][matched_users]
-            row[f"{prefix}-用户数"] = matched_users
-            for key, label, kind in METRICS:
-                row[f"{prefix}-{label}"] = format_metric(stats[key], kind)
-        writer.writerow(row)
-print(f"\n表格已保存至 {CSV_PATH}")
-
-markers = ["o", "s", "^", "D", "v", "P", "*", "X", "p", "h"]
-fig, ax = plt.subplots(figsize=(10, 6))
-
-for i, case in enumerate(CASES):
-    num_instances = case["num_instances"]
-    data = results_data[num_instances]
-    x = [d["users_per_instance"] for d in data]
-    y = [d["queued_ratio"] for d in data]
-    ax.plot(
-        x,
-        y,
-        marker=markers[i % len(markers)],
-        markersize=4,
-        label=f"{instance_group_name(num_instances)}",
+    ax.set_xlabel("用户数 / 实例数")
+    ax.set_ylabel("排队请求数 / 总请求数")
+    ax.set_title(
+        f"排队请求数 / 总请求数 对比 "
+        f"(regions={NUM_REGIONS}, instances={[case['num_instances'] for case in CASES]}, "
+        f"arrival={int(ARRIVAL_RATE)}ms, prefill={int(PREFILL_TIME_MIN)}-{int(PREFILL_TIME_MAX)}ms)"
     )
+    ax.legend()
+    ax.grid(True, alpha=0.3)
 
-ax.set_xlabel("用户数 / 实例数")
-ax.set_ylabel("排队请求数 / 总请求数")
-ax.set_title(
-    f"排队请求数 / 总请求数 对比 "
-    f"(regions={NUM_REGIONS}, instances={[case['num_instances'] for case in CASES]}, "
-    f"arrival={int(ARRIVAL_RATE)}ms, prefill={int(PREFILL_TIME_MIN)}-{int(PREFILL_TIME_MAX)}ms)"
-)
-ax.legend()
-ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    # plt.savefig(FIG_PATH, dpi=200)
+    # print(f"图像已保存至 {FIG_PATH}")
+    print_final_summary()
+    plt.show()
 
-plt.tight_layout()
-# plt.savefig(FIG_PATH, dpi=200)
-# print(f"图像已保存至 {FIG_PATH}")
-print_final_summary()
-plt.show()
+
+if __name__ == "__main__":
+    main()
